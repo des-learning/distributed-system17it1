@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"net"
 	"regexp"
@@ -16,7 +15,8 @@ func hello(conn net.Conn) error {
 	for scanner.Scan() {
 		received := scanner.Text()
 		if received != "Hello, server" {
-			return errors.New("invalid hello")
+			writer.WriteString(`expected "Hello, server"`)
+			writer.Flush()
 		}
 		writer.WriteString("Hello, please say your name\n")
 		writer.Flush()
@@ -33,7 +33,8 @@ func getUsername(conn net.Conn) (string, error) {
 		received := scanner.Text()
 		username = scanUsername.FindStringSubmatch(received)
 		if len(username) != 2 {
-			return "", errors.New("expected username")
+			writer.WriteString("expected username")
+			writer.Flush()
 		}
 		writer.WriteString(fmt.Sprintf("Hello, %s\n", username[1]))
 		writer.Flush()
@@ -69,7 +70,6 @@ func chatLoop(user userConnection) {
 		if text == "bye" {
 			writer.WriteString(fmt.Sprintf("bye, %s\n", user.username))
 			writer.Flush()
-			fmt.Println("client disconnected")
 			break
 		}
 		for _, otherUser := range userList {
@@ -95,6 +95,7 @@ func handleChat(conn net.Conn) {
 	chatUser := register(username, conn)
 	chatLoop(chatUser)
 	chatUser.conn.Close()
+	fmt.Println("client disconnected")
 }
 
 func main() {
