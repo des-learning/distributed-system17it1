@@ -15,7 +15,7 @@ func hello(conn net.Conn) error {
 	for scanner.Scan() {
 		received := scanner.Text()
 		if received != "Hello, server" {
-			writer.WriteString(`expected "Hello, server"`)
+			writer.WriteString(`expected "Hello, server"\n`)
 			writer.Flush()
 			continue
 		}
@@ -34,7 +34,7 @@ func getUsername(conn net.Conn) (string, error) {
 		received := scanner.Text()
 		username = scanUsername.FindStringSubmatch(received)
 		if len(username) != 2 {
-			writer.WriteString("expected username")
+			writer.WriteString("expected username\n")
 			writer.Flush()
 			continue
 		}
