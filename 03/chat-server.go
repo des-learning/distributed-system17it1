@@ -19,6 +19,7 @@ func hello(conn net.Conn) error {
 			writer.Flush()
 			continue
 		}
+		fmt.Println("incoming user")
 		writer.WriteString("Hello, please say your name\n")
 		writer.Flush()
 		break
@@ -38,6 +39,7 @@ func getUsername(conn net.Conn) (string, error) {
 			writer.Flush()
 			continue
 		}
+		fmt.Printf("%s connected\n", username[1])
 		writer.WriteString(fmt.Sprintf("Hello, %s\n", username[1]))
 		writer.Flush()
 		break
@@ -56,11 +58,11 @@ func (u userConnection) send(username string, text string) {
 	writer.Flush()
 }
 
-var userList = []userConnection{}
+var userList = map[string]userConnection{}
 
 func register(username string, conn net.Conn) userConnection {
 	uc := userConnection{username, conn}
-	userList = append(userList, uc)
+	userList[username] = uc
 	return uc
 }
 
@@ -97,7 +99,8 @@ func handleChat(conn net.Conn) {
 	chatUser := register(username, conn)
 	chatLoop(chatUser)
 	chatUser.conn.Close()
-	fmt.Println("client disconnected")
+	fmt.Printf("%s disconnected\n", chatUser.username)
+	delete(userList, chatUser.username)
 }
 
 func main() {
