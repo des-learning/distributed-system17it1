@@ -17,6 +17,7 @@ func hello(conn net.Conn) error {
 		if received != "Hello, server" {
 			writer.WriteString(`expected "Hello, server"`)
 			writer.Flush()
+			continue
 		}
 		writer.WriteString("Hello, please say your name\n")
 		writer.Flush()
@@ -35,6 +36,7 @@ func getUsername(conn net.Conn) (string, error) {
 		if len(username) != 2 {
 			writer.WriteString("expected username")
 			writer.Flush()
+			continue
 		}
 		writer.WriteString(fmt.Sprintf("Hello, %s\n", username[1]))
 		writer.Flush()
