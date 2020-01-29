@@ -26,11 +26,18 @@ func hello(conn net.Conn) error {
 }
 
 func getUsername(conn net.Conn) (string, error) {
-	var received string
-	fmt.Fscanf(conn, "%s", &received)
-	username := scanUsername.FindStringSubmatch(received)
-	if len(username) != 2 {
-		return "", errors.New("expected username")
+	scanner := bufio.NewScanner(conn)
+	writer := bufio.NewWriter(conn)
+	var username []string
+	for scanner.Scan() {
+		received := scanner.Text()
+		username = scanUsername.FindStringSubmatch(received)
+		if len(username) != 2 {
+			return "", errors.New("expected username")
+		}
+		writer.WriteString(fmt.Sprintf("Hello, %s\n", username[1]))
+		writer.Flush()
+		break
 	}
 	return username[1], nil
 }
@@ -40,26 +47,33 @@ type userConnection struct {
 	conn     net.Conn
 }
 
+func (u userConnection) send(username string, text string) {
+	writer := bufio.NewWriter(u.conn)
+	writer.WriteString(fmt.Sprintf("%s: %s\n", username, text))
+	writer.Flush()
+}
+
 var userList = map[string]userConnection{}
 
 func register(username string, conn net.Conn) userConnection {
 	uc := userConnection{username, conn}
-	// add uc to user list
 	userList[username] = uc
 	return uc
 }
 
 func chatLoop(user userConnection) {
-	for {
-		var received string
-		_, err := fmt.Fscanf(user.conn, "%s", &received)
-		if err != nil {
-			return
+	scanner := bufio.NewScanner(user.conn)
+	writer := bufio.NewWriter(user.conn)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "bye" {
+			writer.WriteString(fmt.Sprintf("bye, %s", user.username))
+			writer.Flush()
+			break
 		}
-		// write to all other user
-		for _, u := range userList {
-			if u != user {
-				fmt.Fprintf(u.conn, "%s: %s\n", user.username, received)
+		for _, otherUser := range userList {
+			if otherUser != user {
+				otherUser.send(user.username, text)
 			}
 		}
 	}
@@ -79,6 +93,7 @@ func handleChat(conn net.Conn) {
 	}
 	chatUser := register(username, conn)
 	chatLoop(chatUser)
+	chatUser.conn.Close()
 }
 
 func main() {
@@ -97,7 +112,7 @@ func main() {
 		fmt.Println("client connected")
 		defer conn.Close()
 
-		handleChat(conn)
+		go handleChat(conn)
 		fmt.Println("client disconnected")
 	}
 }
