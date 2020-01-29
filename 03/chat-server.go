@@ -53,11 +53,11 @@ func (u userConnection) send(username string, text string) {
 	writer.Flush()
 }
 
-var userList = map[string]userConnection{}
+var userList = []userConnection{}
 
 func register(username string, conn net.Conn) userConnection {
 	uc := userConnection{username, conn}
-	userList[username] = uc
+	userList = append(userList, uc)
 	return uc
 }
 
