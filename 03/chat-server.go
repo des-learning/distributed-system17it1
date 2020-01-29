@@ -18,7 +18,7 @@ func hello(conn net.Conn) error {
 		if received != "Hello, server" {
 			return errors.New("invalid hello")
 		}
-		writer.WriteString("Hello, please say your name")
+		writer.WriteString("Hello, please say your name\n")
 		writer.Flush()
 		break
 	}
@@ -67,8 +67,9 @@ func chatLoop(user userConnection) {
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == "bye" {
-			writer.WriteString(fmt.Sprintf("bye, %s", user.username))
+			writer.WriteString(fmt.Sprintf("bye, %s\n", user.username))
 			writer.Flush()
+			fmt.Println("client disconnected")
 			break
 		}
 		for _, otherUser := range userList {
@@ -113,6 +114,5 @@ func main() {
 		defer conn.Close()
 
 		go handleChat(conn)
-		fmt.Println("client disconnected")
 	}
 }
