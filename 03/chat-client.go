@@ -33,20 +33,20 @@ loop:
 	return err
 }
 
-func handleServerResponse(username string, conn net.Conn, wg sync.WaitGroup) {
+func handleServerResponse(username string, conn net.Conn, wg *sync.WaitGroup) {
 	defer wg.Done()
 	scanner := bufio.NewScanner(conn)
 
 	for scanner.Scan() {
 		text := scanner.Text()
 		if text == fmt.Sprintf("bye %s", username) {
-			break
+			return
 		}
 		fmt.Println(text)
 	}
 }
 
-func handleWriteToServer(conn net.Conn, wg sync.WaitGroup) {
+func handleWriteToServer(conn net.Conn, wg *sync.WaitGroup) {
 	defer wg.Done()
 	scanner := bufio.NewScanner(os.Stdin)
 	writer := bufio.NewWriter(conn)
@@ -55,14 +55,17 @@ func handleWriteToServer(conn net.Conn, wg sync.WaitGroup) {
 		text := scanner.Text()
 		writer.WriteString(fmt.Sprintf("%s\n", text))
 		writer.Flush()
+		if text == "bye" {
+			return
+		}
 	}
 }
 
 func chatLoop(username string, conn net.Conn) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	go handleServerResponse(username, conn, wg)
-	go handleWriteToServer(conn, wg)
+	go handleServerResponse(username, conn, &wg)
+	go handleWriteToServer(conn, &wg)
 	wg.Wait()
 }
 
