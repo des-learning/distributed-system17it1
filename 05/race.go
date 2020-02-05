@@ -2,23 +2,32 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
 	"time"
 )
 
 var counter int = 0
+var mutex = sync.Mutex{}
 
 func inc(worker string) {
+	mutex.Lock()
 	prev := counter
 	counter = counter + 1
 	fmt.Printf("%s: %d %d\n", worker, prev, counter)
-	time.Sleep(100 * time.Millisecond)
+	mutex.Unlock()
+	n := time.Duration(rand.Intn(100)) * time.Millisecond
+	time.Sleep(n)
 }
 
 func dec(worker string) {
+	mutex.Lock()
 	prev := counter
 	counter = counter - 1
 	fmt.Printf("%s: %d %d\n", worker, prev, counter)
-	time.Sleep(100 * time.Millisecond)
+	mutex.Unlock()
+	n := time.Duration(rand.Intn(100)) * time.Millisecond
+	time.Sleep(n)
 }
 
 func work(name string, n int, add bool) {
@@ -45,6 +54,6 @@ func main() {
 	for name, value := range workers {
 		go work(name, value.n, value.add)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	fmt.Printf("counter: %d\n", counter)
 }
