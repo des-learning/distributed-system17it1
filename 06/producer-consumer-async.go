@@ -22,7 +22,7 @@ func randomString(length int) string {
 	return string(b)
 }
 
-func producer(c chan string, n int) {
+func producer(c chan<- string, n int) {
 	fmt.Println("producer running")
 	for i := 0; i < n; i++ {
 		c <- randomString(rand.Intn(10) + 1)
@@ -30,7 +30,7 @@ func producer(c chan string, n int) {
 	fmt.Println("producer finished")
 }
 
-func consumer(c chan string, o chan string, name string) {
+func consumer(c <-chan string, o chan<- string, name string) {
 	fmt.Printf("consumer %s running\n", name)
 	for s := range c {
 		o <- fmt.Sprintf("%s: %s", name, strings.ToUpper(s))
@@ -38,7 +38,7 @@ func consumer(c chan string, o chan string, name string) {
 	fmt.Printf("consumer %s finished\n", name)
 }
 
-func countChars(c chan string, name string) {
+func countChars(c <-chan string, name string) {
 	fmt.Printf("countChars %s running\n", name)
 	for s := range c {
 		fmt.Printf("%s: %d %s\n", name, len(s), s)
