@@ -35,22 +35,24 @@ func (c *CircuitBreaker) sendRequest(ctx context.Context, fn func() error) error
 	}
 }
 
-func (c *CircuitBreaker) Perform(ctx context.Context, fn func() error) {
+func (c *CircuitBreaker) Perform(ctx context.Context, fn func() error) error {
+	var err error
 	if c.state == 1 && rand.Int31n(10)%3 == 0 {
 		c.state = 2
 	}
 	switch c.state {
 	case 0:
 		log.Println("cb close, try to send request to upstream service")
-		if c.sendRequest(ctx, fn) != nil {
+		if err = c.sendRequest(ctx, fn); err != nil {
 			c.state = 1
 			log.Println("service error, change cb to open state")
 		}
 	case 1:
 		log.Println("circuit breaker open, not sending request to upstream service")
+		err = fmt.Errorf("upstream service error")
 	case 2:
 		log.Println("circuit breaker half open, allowing some request to check upstream service")
-		if c.sendRequest(ctx, fn) != nil {
+		if err = c.sendRequest(ctx, fn); err != nil {
 			c.state = 1
 			log.Println("service still error, change cb to open state")
 		} else {
@@ -58,6 +60,7 @@ func (c *CircuitBreaker) Perform(ctx context.Context, fn func() error) {
 			log.Println("service recovered, change cb to close state")
 		}
 	}
+	return err
 }
 
 var cb = &CircuitBreaker{}
@@ -79,18 +82,26 @@ func hello(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		var message string
 		var err error
-		cb.Perform(ctx, func() error {
+		err = cb.Perform(ctx, func() error {
 			message, err = greeter(m.Message)
 			return err
 		})
-		res, _ := json.Marshal(Message{Message: message})
 		w.Header().Set("Content-Type", "application/json")
+		var res []byte
+		if err != nil {
+			res, _ = json.Marshal(Message{Message: err.Error()})
+		} else {
+			res, _ = json.Marshal(Message{Message: message})
+		}
 		fmt.Fprint(w, string(res))
 	}
 }
 
 func greeter(name string) (string, error) {
 	time.Sleep(time.Duration(rand.Int31n(110)) * time.Millisecond)
+	if rand.Int31n(10)%7 == 0 {
+		return "", fmt.Errorf("service error")
+	}
 	return "Hello " + name, nil
 }
 
