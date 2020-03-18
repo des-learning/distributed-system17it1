@@ -19,34 +19,45 @@ type CircuitBreaker struct {
 	state int // 0 close, 1 open, 2 half open
 }
 
+func (c *CircuitBreaker) sendRequest(ctx context.Context, fn func() error) error {
+	res := make(chan error, 1)
+	go func() {
+		res <- fn()
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout")
+		case err := <-res:
+			return err
+		default:
+		}
+	}
+}
+
 func (c *CircuitBreaker) Perform(ctx context.Context, fn func() error) {
+	if c.state == 1 && rand.Int31n(10)%3 == 0 {
+		c.state = 2
+	}
 	switch c.state {
 	case 0:
 		log.Println("cb close, try to send request to upstream service")
-		res := make(chan error, 1)
-		go func() {
-			res <- fn()
-		}()
-		for {
-			select {
-			case <-ctx.Done():
-				c.state = 1
-				log.Println("cb timeout, change cb to open state")
-				return
-			case err := <-res:
-				if err != nil {
-					c.state = 1
-					log.Println("service error, change cb to open state")
-				}
-				return
-			default:
-			}
+		if c.sendRequest(ctx, fn) != nil {
+			c.state = 1
+			log.Println("service error, change cb to open state")
 		}
 	case 1:
 		log.Println("circuit breaker open, not sending request to upstream service")
 		return
 	case 2:
 		log.Println("circuit breaker half open, allowing some request to check upstream service")
+		if c.sendRequest(ctx, fn) != nil {
+			c.state = 1
+			log.Println("service still error, change cb to open state")
+		} else {
+			c.state = 0
+			log.Println("service recovered, change cb to close state")
+		}
 		return
 	}
 }
@@ -81,7 +92,7 @@ func hello(w http.ResponseWriter, r *http.Request) {
 }
 
 func greeter(name string) (string, error) {
-	time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
+	time.Sleep(time.Duration(rand.Int31n(110)) * time.Millisecond)
 	return "Hello " + name, nil
 }
 
