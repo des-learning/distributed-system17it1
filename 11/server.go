@@ -48,7 +48,6 @@ func (c *CircuitBreaker) Perform(ctx context.Context, fn func() error) {
 		}
 	case 1:
 		log.Println("circuit breaker open, not sending request to upstream service")
-		return
 	case 2:
 		log.Println("circuit breaker half open, allowing some request to check upstream service")
 		if c.sendRequest(ctx, fn) != nil {
@@ -58,7 +57,6 @@ func (c *CircuitBreaker) Perform(ctx context.Context, fn func() error) {
 			c.state = 0
 			log.Println("service recovered, change cb to close state")
 		}
-		return
 	}
 }
 
